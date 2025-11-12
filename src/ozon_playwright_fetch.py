@@ -3,6 +3,7 @@ import sys
 import time
 from pathlib import Path
 from typing import Iterable, List, Optional
+from urllib.parse import urlsplit
 
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from playwright.sync_api import sync_playwright
@@ -18,14 +19,26 @@ def read_links(path: Path) -> List[str]:
 
 
 def guess_filename(url: str, index: int) -> str:
-    lower = url.lower()
-    parts = [segment for segment in lower.split("/") if segment.isdigit()]
-    if parts:
-        return parts[-1]
-    digits = "".join(ch if ch.isdigit() else " " for ch in lower).split()
+    product_id = extract_ozon_id(url)
+    if product_id:
+        return product_id
+    digits = "".join(ch if ch.isdigit() else " " for ch in url).split()
     if digits:
         return digits[-1]
     return f"page_{index:04d}"
+
+
+def extract_ozon_id(url: str) -> Optional[str]:
+    parsed = urlsplit(url)
+    if "ozon.ru" not in parsed.netloc or not parsed.path:
+        return None
+    slug = parsed.path.rstrip("/").split("/")[-1]
+    slug = slug.split("?")[0]
+    parts = slug.split("-")
+    for part in reversed(parts):
+        if part.isdigit():
+            return part
+    return None
 
 
 def save_html(content: str, output_dir: Path, base_name: str) -> Path:
