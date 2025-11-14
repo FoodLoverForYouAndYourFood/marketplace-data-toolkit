@@ -65,7 +65,7 @@ python src/github_pipeline.py ^
 
 - Если Ozon просит повторную авторизацию, запусти `python -m playwright open --browser=chromium --user-data-dir output/playwright_profile https://www.ozon.ru/`, залогинься и затем используй эту папку в `--profile-dir`.
 - Храни свои реальные cookies только локально. В репозитории оставлены `.example` файлы, чтобы было понятно, как выглядит структура JSON.
-- `src/paired_price_export.py` объединяет обе выгрузки за один запуск и сразу строит общий CSV `name, ozon_url, wb_url, price, wb_article, parsed_at`.  
+- `src/paired_price_export.py` объединяет обе выгрузки за один запуск и сразу строит общий CSV `name, ozon_url, wb_url, price_ozon_card, price_wb, wb_article, parsed_at`.  
   Пример команды:
   ```powershell
   python src/paired_price_export.py ^

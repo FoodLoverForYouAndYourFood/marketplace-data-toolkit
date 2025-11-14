@@ -20,13 +20,14 @@ def _zip_pairs(
         oz = oz_records[idx]
         wb = wb_records[idx]
         wb_price = wb.get("price")
-        oz_price = oz.price_with_card or oz.price_without_card
+        oz_price_card = oz.price_with_card or ""
         rows.append(
             {
                 "name": oz.name or wb.get("name") or "",
                 "ozon_url": oz_links[idx],
                 "wb_url": wb_links[idx],
-                "price": oz_price if oz_price else (str(wb_price) if wb_price is not None else ""),
+                "price_ozon_card": oz_price_card,
+                "price_wb": str(wb_price) if wb_price is not None else "",
                 "wb_article": wb.get("product_id") or "",
                 "parsed_at": oz.timestamp,
             }
@@ -43,7 +44,8 @@ def _write_rows(rows: List[dict], path: Path) -> None:
                 "name",
                 "ozon_url",
                 "wb_url",
-                "price",
+                "price_ozon_card",
+                "price_wb",
                 "wb_article",
                 "parsed_at",
             ],
