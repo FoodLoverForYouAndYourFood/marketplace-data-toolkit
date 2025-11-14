@@ -13,8 +13,9 @@ data/
     wb_cookies.example.json
   html/samples/          # пример сохранённой карточки Ozon (для ориентирования в DOM)
 output/
-  ozon_prices_*.csv      # готовые отчёты по Ozon (с/без Ozon Карты)
-  wb_prices_*.csv        # готовые отчёты по WB card API
+  ozon_prices_*.csv      # отчёты по Ozon (Playwright; с/без Ozon Карты)
+  wb_prices_*.csv        # отчёты по WB card API
+  paired_prices_*.csv    # общий отчёт Ozon+WB (пари по порядку ссылок)
 src/
   ozon_playwright_fetch.py
   github_pipeline.py     # WB + Ozon via API (используется только для WB)
@@ -64,6 +65,17 @@ python src/github_pipeline.py ^
 
 - Если Ozon просит повторную авторизацию, запусти `python -m playwright open --browser=chromium --user-data-dir output/playwright_profile https://www.ozon.ru/`, залогинься и затем используй эту папку в `--profile-dir`.
 - Храни свои реальные cookies только локально. В репозитории оставлены `.example` файлы, чтобы было понятно, как выглядит структура JSON.
+- `src/paired_price_export.py` объединяет обе выгрузки за один запуск и сразу строит общий CSV `name, ozon_url, wb_url, price, wb_article, parsed_at`.  
+  Пример команды:
+  ```powershell
+  python src/paired_price_export.py ^
+    --oz-links data/links/links_oz.txt ^
+    --wb-links data/links/links_wb.txt ^
+    --profile-dir "C:\Users\<ты>\AppData\Local\Google\Chrome\User Data\Default" ^
+    --browser-path "C:\Program Files\Google\Chrome\Application\chrome.exe" ^
+    --skip-html
+  ```
+  Ссылки должны идти в одинаковом порядке (строка 1 в `links_oz` соответствует строке 1 в `links_wb`, и т.д.).
 - Новые результаты не перезаписывают старые: каждый запуск создаёт CSV с меткой времени. Просто удаляй лишние файлы из `output/` по необходимости.
 
 Готово — теперь любой пользователь может подставить свои ссылки/куки, запустить два скрипта и сразу получить свежий прайс‑мониторинг.
