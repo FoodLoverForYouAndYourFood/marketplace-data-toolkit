@@ -1,0 +1,8 @@
+﻿[
+  {
+    "name": "x_wbaas_token",
+    "value": "paste your token",
+    "domain": ".wildberries.ru",
+    "path": "/"
+  }
+]

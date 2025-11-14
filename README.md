@@ -1,87 +1,69 @@
-# Marketplace Data Toolkit
+# Marketplace Price Toolkit
 
-Скрипты автоматизируют полный цикл сбора данных о карточках товаров Wildberries и Ozon:
+Минимальный набор утилит, который выгружает актуальные цены из карточек Ozon и Wildberries.  
+В проекте оставлены только скрипты, входные «примеры» и последние полученные выгрузки.
 
-1. **Скачивание HTML** через Playwright с использованием существующего профиля Opera/Chrome.
-2. **Парсинг** сохранённых страниц с извлечением структурированной информации.
-3. **Запросы к публичным API** (WB) и компоновка данных без HTML.
-4. **Формирование итогового Excel-отчёта** в формате, аналогичном `Примеры.xlsx`.
-
-## Структура каталогов
+## Структура
 
 ```
 data/
-  links/           # входные списки ссылок (links_wb.txt, links_oz.txt)
-  cookies/         # приватные cookies для Ozon (ozon_cookies.json)
-  html/
-    ozon/          # HTML, выгруженные Playwright'ом
-    samples/       # эталонные страницы для тестов
+  links/                 # примеры списков ссылок (txt, по одной ссылке в строке)
+  cookies/
+    ozon_cookies.example.json
+    wb_cookies.example.json
+  html/samples/          # пример сохранённой карточки Ozon (для ориентирования в DOM)
 output/
-  products.csv         # выгрузка WB из github_pipeline.py
-  ozon_products.csv    # выгрузка из HTML через html_to_csv.py
-  products_wb.xlsx     # промежуточный Excel с данными WB
-  report.xlsx          # финальный отчёт
+  ozon_prices_*.csv      # готовые отчёты по Ozon (с/без Ozon Карты)
+  wb_prices_*.csv        # готовые отчёты по WB card API
 src/
-  *.py                 # все служебные скрипты
-.env.example           # шаблон путей/переменных окружения
+  ozon_playwright_fetch.py
+  github_pipeline.py     # WB + Ozon via API (используется только для WB)
+  ...                    # вспомогательные скрипты (build_report.py, html_to_csv.py и т.д.)
 ```
-
-Перед запуском скопируй `.env.example` в `.env` (или задай переменные любым удобным способом) и укажи свои пути к профилю Opera GX / cookies.
 
 ## Требования
 
-- Python 3.11+
-- `pip install -r requirements.txt` (минимум: `playwright`, `openpyxl`, `curl_cffi`, `requests`)
-- Установленный браузер Opera GX (или Chrome) с рабочей авторизацией на Ozon/WB.
-- `python -m playwright install chromium` (для Playwright).
+- Python 3.11+  
+- `pip install -r requirements.txt`  
+- Один раз: `python -m playwright install chromium`
 
-## Скрипты
+## Подготовка исходных данных
 
-| Скрипт | Назначение | Основные параметры |
-|--------|------------|--------------------|
-| `src/ozon_playwright_fetch.py` | Скачивает HTML карточек Ozon, используя указанный профиль Opera/Chrome. Ждёт ручного прохождения антибота перед сохранением каждой страницы. | `--links`, `--out-dir`, `--profile-dir`, `--browser-path`, `--delay`, `--timeout`, `--overwrite` |
-| `src/html_to_csv.py` | Парсит сохранённые HTML (Ozon или WB) и формирует CSV через `marketplace_parser.py`. | `--vendor`, `--html-dir`, `--out` |
-| `src/marketplace_parser.py` | Общий парсер `application/ld+json` из HTML. Используется как библиотека другими скриптами. | (импортируется) |
-| `src/github_pipeline.py` | Получает данные напрямую: WB через `card.wb.ru`, Ozon через `composer-api` (с cookies). Может работать с любым списком ссылок и формирует CSV. | `--wb-links`, `--oz-links`, `--ozon-cookies`, `--out` |
-| `src/build_report.py` | Компилирует итоговый Excel (`output/report.xlsx`) с заголовками, формулами маржи и комментариями (рейтинги/отзывы). | `--wb-csv`, `--ozon-csv`, `--out` |
+1. **Ссылки.** Отредактируй `data/links/links_oz.txt` и `data/links/links_wb.txt`.  
+   Формат: по одной ссылке в строке, `#` — комментарий.
+2. **Ozon авторизация.** Есть два сценария:
+   - **Через профиль Chrome (рекомендовано).** В профиле уже должен быть выполнен вход на ozon.ru. Выясни путь вида `C:\Users\<ты>\AppData\Local\Google\Chrome\User Data\Default` и передай его в `--profile-dir`.  
+   - **Через cookies.** Экспортируй cookies из браузера (например, EditThisCookie) в JSON‑массив вида, как в `data/cookies/ozon_cookies.example.json`, и сохрани в `data/cookies/ozon_cookies.json`.
+3. **WB cookies.** Для WB достаточно авторизации по умолчанию, но при необходимости можно подготовить `data/cookies/wb_cookies.json` аналогично примеру.
 
-## Типовой сценарий
+## Сбор цен Ozon (Playwright)
 
-```bash
-# 1. Скачиваем HTML карточек Ozon
+```powershell
 python src/ozon_playwright_fetch.py ^
   --links data/links/links_oz.txt ^
-  --out-dir data/html/ozon ^
-  --profile-dir "C:\Users\FoodLover\AppData\Roaming\Opera Software\Opera GX Stable\Default" ^
-  --browser-path "C:\Users\FoodLover\AppData\Local\Programs\Opera GX\opera.exe" ^
-  --delay 2 --timeout 120 --overwrite
-
-# 2. Парсим сохранённые HTML в CSV
-python src/html_to_csv.py --vendor ozon --html-dir data/html/ozon --out output/ozon_products.csv
-
-# 3. Запрашиваем ассортименты WB и/или Ozon напрямую
-python src/github_pipeline.py --wb-links data/links/links_wb.txt --oz-links data/links/links_oz.txt \
-  --ozon-cookies data/cookies/ozon_cookies.json --out output/products.csv
-
-# 4. Собираем итоговый Excel-отчет
-python src/build_report.py --wb-csv output/products.csv --ozon-csv output/ozon_products.csv --out output/report.xlsx
+  --profile-dir "C:\Users\<ты>\AppData\Local\Google\Chrome\User Data\Default" ^
+  --browser-path "C:\Program Files\Google\Chrome\Application\chrome.exe" ^
+  --delay 2 --timeout 120
 ```
 
-## Примечания
+- Скрипт открывает каждую ссылку через Playwright + твой профиль, при необходимости можно добавить `--headless` или `--skip-html` (если не нужны HTML‑снапшоты).  
+- Результат сохраняется в `output/ozon_prices_<дата>.csv` с колонками `url`, `product_id`, `name`, `price_with_card`, `price_without_card`, `timestamp`.
 
-- Для Ozon нужен актуальный набор cookies (`ozon_cookies.json`). Их можно выгрузить из DevTools → Application → Cookies и сохранить в JSON (массив объектов с полями `name`, `value`, `domain`, `path`).
-- Playwright требует закрыть Opera GX перед запуском, иначе профиль будет занят.
-- WB API постоянно отдаёт `supplierId`, `supplier` и `subjectId`, что используется для заполнения столбцов «ID продавца / Продавец / Предмет».
-- В `output/` всегда лежат последняя CSV-выгрузка и Excel-отчёт — их можно коммитить или выгружать в BI.
+## Сбор цен WB (card API)
 
-## Git
-
-Проект уже структурирован для коммита. Добавь `.env` (если нужен) в `.gitignore` и выполняй стандартные шаги:
-
-```bash
-git init
-git add .
-git commit -m "Initial data toolkit"
+```powershell
+python src/github_pipeline.py ^
+  --wb-links data/links/links_wb.txt ^
+  --out output/wb_prices_<дата>.csv
 ```
 
-Далее можно привязать удалённый репозиторий и `git push origin main`.
+- Работает через публичный `card.wb.ru` API и не требует Playwright.  
+- В CSV пишутся основные поля карточки: `vendor`, `product_id`, `url`, `name`, `price`, `currency`, `rating_value`, `review_count`, `supplier_id/ supplier_name`, `subject_id`.
+
+## Советы
+
+- Если Ozon просит повторную авторизацию, запусти `python -m playwright open --browser=chromium --user-data-dir output/playwright_profile https://www.ozon.ru/`, залогинься и затем используй эту папку в `--profile-dir`.
+- Храни свои реальные cookies только локально. В репозитории оставлены `.example` файлы, чтобы было понятно, как выглядит структура JSON.
+- Новые результаты не перезаписывают старые: каждый запуск создаёт CSV с меткой времени. Просто удаляй лишние файлы из `output/` по необходимости.
+
+Готово — теперь любой пользователь может подставить свои ссылки/куки, запустить два скрипта и сразу получить свежий прайс‑мониторинг.
