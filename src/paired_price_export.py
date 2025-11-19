@@ -3,9 +3,12 @@ import csv
 from datetime import datetime
 from pathlib import Path
 from typing import List, Sequence, Tuple
+import tkinter as tk
+from tkinter import filedialog, messagebox
 
 from github_pipeline import parse_wb_links, read_links as read_wb_links
 from ozon_playwright_fetch import PriceRecord, download_pages, read_links as read_oz_links
+from csv_to_excel import convert_csv_to_xlsx
 
 
 def _zip_pairs(
@@ -52,6 +55,8 @@ def _write_rows(rows: List[dict], path: Path) -> None:
         )
         writer.writeheader()
         writer.writerows(rows)
+    # авто-конверсия в XLSX рядом
+    convert_csv_to_xlsx(path, path.with_suffix(".xlsx"))
 
 
 def build_cli() -> argparse.ArgumentParser:
@@ -60,12 +65,11 @@ def build_cli() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Fetch paired Ozon+WB prices (1:1 order) and build a combined CSV."
     )
-    parser.add_argument("--oz-links", type=Path, required=True, help="File with Ozon links.")
-    parser.add_argument("--wb-links", type=Path, required=True, help="File with WB links.")
+    parser.add_argument("--oz-links", type=Path, help="File with Ozon links.")
+    parser.add_argument("--wb-links", type=Path, help="File with WB links.")
     parser.add_argument(
         "--profile-dir",
         type=Path,
-        required=True,
         help="Browser profile directory with an authenticated Ozon session.",
     )
     parser.add_argument(
@@ -76,8 +80,8 @@ def build_cli() -> argparse.ArgumentParser:
     parser.add_argument(
         "--oz-html-dir",
         type=Path,
-        default=Path("output/html/ozon"),
-        help="Where to store temporary Ozon HTML snapshots (default: output/html/ozon).",
+        default=Path("data/html/ozon"),
+        help="Where to store temporary Ozon HTML snapshots (default: data/html/ozon).",
     )
     parser.add_argument(
         "--out",
@@ -99,12 +103,55 @@ def build_cli() -> argparse.ArgumentParser:
         action="store_true",
         help="Do not write HTML snapshots to disk.",
     )
+    parser.add_argument(
+        "--gui",
+        action="store_true",
+        help="Run with a simple GUI to pick files/paths instead of CLI args.",
+    )
     return parser
+
+
+def run_gui() -> argparse.Namespace:
+    root = tk.Tk()
+    root.withdraw()
+    messagebox.showinfo("Парсинг", "Выбери файлы и каталоги для парсинга.")
+
+    oz_links = filedialog.askopenfilename(title="Файл ссылок Ozon", initialdir="data/links", filetypes=[("Text", "*.txt"), ("All", "*.*")])
+    wb_links = filedialog.askopenfilename(title="Файл ссылок WB", initialdir="data/links", filetypes=[("Text", "*.txt"), ("All", "*.*")])
+    profile_dir = filedialog.askdirectory(title="Папка профиля браузера")
+    browser_path = filedialog.askopenfilename(title="Исполняемый файл браузера (chrome.exe)", initialdir="C:/Program Files/Google/Chrome/Application")
+    out = filedialog.asksaveasfilename(title="Куда сохранить CSV", defaultextension=".csv", initialfile=f"paired_prices_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv", initialdir="output")
+
+    if not all([oz_links, wb_links, profile_dir, browser_path, out]):
+        raise SystemExit("Выбор отменён")
+
+    # соберём Namespace как будто это пришло из CLI
+    args = argparse.Namespace(
+        oz_links=Path(oz_links),
+        wb_links=Path(wb_links),
+        profile_dir=Path(profile_dir),
+        browser_path=Path(browser_path),
+        oz_html_dir=Path("data/html/ozon"),
+        out=Path(out),
+        headless=False,
+        delay=1.5,
+        timeout=90,
+        overwrite=True,
+        manual_confirm=False,
+        skip_html=False,
+    )
+    return args
 
 
 def main() -> None:
     parser = build_cli()
     args = parser.parse_args()
+
+    if args.gui:
+        args = run_gui()
+    else:
+        if not args.oz_links or not args.wb_links or not args.profile_dir:
+            parser.error("Arguments --oz-links, --wb-links, --profile-dir are required unless --gui is used.")
 
     oz_links = read_oz_links(args.oz_links)
     wb_links = read_wb_links(args.wb_links)
