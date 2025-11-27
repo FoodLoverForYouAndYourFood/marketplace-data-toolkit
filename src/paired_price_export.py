@@ -11,7 +11,6 @@ from csv_to_excel import convert_csv_to_xlsx
 from github_pipeline import parse_wb_links, read_links as read_wb_links
 from ozon_playwright_fetch import PriceRecord, download_pages, read_links as read_oz_links
 
-
 def _zip_pairs(
     oz_records: Sequence[PriceRecord],
     wb_records: Sequence[dict],
@@ -37,7 +36,6 @@ def _zip_pairs(
         )
     return rows
 
-
 def _write_rows(rows: List[dict], path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", newline="", encoding="utf-8") as handle:
@@ -61,7 +59,7 @@ def _write_rows(rows: List[dict], path: Path) -> None:
 def build_cli() -> argparse.ArgumentParser:
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     default_out = Path("output") / f"paired_prices_{timestamp}.csv"
-    parser = argparse.ArgumentParser(description="Fetch paired Ozon+WB prices and build combined CSV/XLSX.")
+    parser = argparse.ArgumentParser(description="Fetch paired Ozon+WB prices and build combined CSV.")
     parser.add_argument("--oz-links", type=Path, help="File with Ozon links.")
     parser.add_argument("--wb-links", type=Path, help="File with WB links.")
     parser.add_argument("--profile-dir", type=Path, help="Browser profile directory (Chromium/Chrome).")
@@ -77,7 +75,6 @@ def build_cli() -> argparse.ArgumentParser:
     parser.add_argument("--gui", action="store_true", help="Show GUI prompts for paths instead of CLI args.")
     return parser
 
-
 def guess_chrome_browser() -> Optional[Path]:
     for path in [
         Path("C:/Program Files/Google/Chrome/Application/chrome.exe"),
@@ -87,14 +84,12 @@ def guess_chrome_browser() -> Optional[Path]:
             return path
     return None
 
-
 def guess_chrome_profile() -> Optional[Path]:
     user = os.environ.get("USERPROFILE")
     if not user:
         return None
     path = Path(user) / "AppData/Local/Google/Chrome/User Data/Default"
     return path if path.exists() else None
-
 
 def run_gui() -> argparse.Namespace:
     root = tk.Tk()
@@ -131,8 +126,8 @@ def run_gui() -> argparse.Namespace:
     return argparse.Namespace(
         oz_links=Path(oz_links),
         wb_links=Path(wb_links),
-        profile_dir=Path(profile_dir),
-        browser_path=Path(browser_path),
+        profile_dir=Path(profile_dir), # type: ignore
+        browser_path=Path(browser_path), # type: ignore
         oz_html_dir=Path("data/html/ozon"),
         out=Path(out),
         headless=False,
@@ -142,7 +137,6 @@ def run_gui() -> argparse.Namespace:
         manual_confirm=False,
         skip_html=False,
     )
-
 
 def main() -> None:
     parser = build_cli()
@@ -183,7 +177,6 @@ def main() -> None:
         raise SystemExit("No paired rows were produced.")
     _write_rows(rows, args.out)
     print(f"[CSV] Saved {len(rows)} paired rows to {args.out}")
-
 
 if __name__ == "__main__":
     main()
