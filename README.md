@@ -71,7 +71,7 @@ python src/github_pipeline.py ^
   python src/paired_price_export.py ^
     --oz-links data/links/links_oz.txt ^
     --wb-links data/links/links_wb.txt ^
-    --profile-dir "C:\Users\<ты>\AppData\Local\Google\Chrome\User Data\Default" ^
+    --profile-dir "C:\Users\<ты>s\AppData\Local\Google\Chrome\User Data\Default" ^
     --browser-path "C:\Program Files\Google\Chrome\Application\chrome.exe" ^
     --skip-html
   ```
