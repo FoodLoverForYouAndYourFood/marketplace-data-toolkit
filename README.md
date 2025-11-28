@@ -24,7 +24,7 @@ cd C:\Users\FoodLover\Documents\PetProjects\Parser_exe
 python src/paired_price_export.py ^
   --oz-links data/links/links_oz.txt ^
   --wb-links data/links/links_wb.txt ^
-  --profile-dir "C:\Users\FoodLover\AppData\Local\Google\Chrome\User Data\Default" ^
+  --profile-dir "C:\Users\<ВАШ_ПОЛЬЗОВАТЕЛЬ>\AppData\Local\Google\Chrome\User Data\Default" ^
   --browser-path "C:\Program Files\Google\Chrome\Application\chrome.exe" ^
   --skip-html
 
