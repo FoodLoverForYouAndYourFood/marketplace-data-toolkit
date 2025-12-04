@@ -3,7 +3,7 @@ import csv
 import json
 import re
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Callable, Dict, Iterable, List, Optional
 from urllib.parse import quote, urlsplit
 
 from curl_cffi import requests as curl_requests
@@ -170,14 +170,20 @@ def _ozon_relative(link: str) -> Optional[str]:
 WB_ID_RE = re.compile(r"/catalog/(\d+)/")
 
 
-def parse_wb_links(links: List[str]) -> List[Dict[str, Optional[str]]]:
+def parse_wb_links(
+    links: List[str],
+    on_progress: Optional[Callable[[int, int, str], None]] = None,
+) -> List[Dict[str, Optional[str]]]:
     if not links:
         return []
     records: List[Dict[str, Optional[str]]] = []
-    for link in links:
+    total = len(links)
+    for idx, link in enumerate(links, 1):
         product_id = _extract_wb_id(link)
         if not product_id:
             print(f"[WB][MISS] {link}: cannot find product id")
+            if on_progress:
+                on_progress(idx, total, link)
             continue
         params = {
             "appType": 1,
@@ -197,6 +203,8 @@ def parse_wb_links(links: List[str]) -> List[Dict[str, Optional[str]]]:
         products = payload.get("data", {}).get("products") or []
         if not products:
             print(f"[WB][MISS] {product_id}: empty data")
+            if on_progress:
+                on_progress(idx, total, link)
             continue
         item = products[0]
         price = _wb_price(item)
@@ -219,6 +227,8 @@ def parse_wb_links(links: List[str]) -> List[Dict[str, Optional[str]]]:
         }
         records.append(record)
         print(f"[WB][OK] {record['product_id']} {record['name']}")
+        if on_progress:
+            on_progress(idx, total, link)
     return records
 
 

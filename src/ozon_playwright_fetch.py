@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
-from typing import Iterable, List, Optional, Tuple
+from typing import Callable, Iterable, List, Optional, Tuple
 from urllib.parse import urlsplit
 
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
@@ -158,6 +158,15 @@ def extract_product_name(page) -> Optional[str]:
     except Exception:  # noqa: BLE001
         return None
 
+def is_out_of_stock(page) -> bool:
+    """Detect out-of-stock page quickly to skip long waits."""
+    try:
+        body_text = page.inner_text("body")
+    except Exception:  # noqa: BLE001
+        return False
+    lowered = body_text.lower()
+    return "товар закончился" in lowered or "нет в наличии" in lowered
+
 
 def write_csv_report(records: List[PriceRecord], csv_path: Path) -> None:
     csv_path.parent.mkdir(parents=True, exist_ok=True)
@@ -180,7 +189,10 @@ def download_pages(
     overwrite: bool,
     manual_confirm: bool,
     skip_html: bool,
+    on_progress: Optional[Callable[[int, int, str, str], None]] = None,
 ) -> List[PriceRecord]:
+    links_list = list(links)
+    total = len(links_list)
     launch_kwargs = {
         "user_data_dir": str(profile_dir),
         "headless": headless,
@@ -199,16 +211,23 @@ def download_pages(
         browser = playwright.chromium.launch_persistent_context(**launch_kwargs)
         page = browser.pages[0] if browser.pages else browser.new_page()
 
-        for idx, url in enumerate(links, 1):
+        for idx, url in enumerate(links_list, 1):
             name = guess_filename(url, idx)
             target = output_dir / f"{name}.html"
+            status = "ok"
 
             print(f"[LOAD] {url}")
             try:
                 page.goto(url, wait_until="domcontentloaded", timeout=timeout * 1000)
                 if manual_confirm:
                     input("  Press Enter after verifying the page is ready...")
-                if per_page_delay > 0:
+                if is_out_of_stock(page):
+                    status = "out_of_stock"
+                    print(f"[SKIP] out of stock: {url}")
+                    per_page_sleep = min(0.2, per_page_delay)
+                else:
+                    per_page_sleep = per_page_delay
+                if per_page_sleep > 0:
                     time.sleep(per_page_delay)
 
                 if not skip_html:
@@ -218,7 +237,7 @@ def download_pages(
                         save_html(page.content(), output_dir, name)
                         print(f"[HTML] saved {target}")
 
-                price_with_card, price_without_card = extract_prices_from_page(page)
+                price_with_card, price_without_card = extract_prices_from_page(page) if status != "out_of_stock" else (None, None)
                 record = PriceRecord(
                     url=url,
                     product_id=extract_ozon_id(url) or name,
@@ -232,9 +251,15 @@ def download_pages(
                     f"[PRICE] card={price_with_card or 'n/a'} | no-card={price_without_card or 'n/a'}"
                 )
             except PlaywrightTimeoutError:
+                status = "timeout"
                 print(f"[TIMEOUT] {url}", file=sys.stderr)
             except Exception as exc:  # pylint: disable=broad-except
+                status = "error"
                 print(f"[ERROR] {url}: {exc}", file=sys.stderr)
+            finally:
+                if on_progress:
+                    safe_total = total or len(links_list) or 1
+                    on_progress(min(idx, safe_total), safe_total, url, status)
 
         browser.close()
     return records

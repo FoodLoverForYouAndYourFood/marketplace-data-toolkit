@@ -1,55 +1,53 @@
-﻿# Инструкция по запуску (Ozon + WB)
+# Парсер цен Ozon + Wildberries
 
-Простой инструмент: берёте два списка ссылок (Ozon и WB) и получаете готовый отчёт в CSV и XLSX.
+Инструмент для продавцов: сверяет карточки Ozon и WB, забирает цены (включая Ozon Карту) и отдаёт готовые CSV и Excel. Есть EXE с окном, прогрессом и логом.
 
-## Что нужно
-1) Windows и установленный Python 3.11+
-2) Зависимости:
-   - pip install -r requirements.txt
-   - python -m playwright install chromium
-3) Google Chrome, где вы уже залогинены в Ozon (чтобы видеть цены с Ozon Картой). Закройте Chrome перед запуском.
+## Что нового
+- EXE сам подкачивает Chromium при первом запуске (если не встроен).
+- Ссылки можно просто вставить в окно (Ctrl+V); txt-файлы опциональны.
+- Логин нужен только для Ozon (WB идёт по API).
+- Профиль ищется автоматически (Chrome Default). Если нет — создаётся `output/playwright_profile`.
 
-## Куда вставлять ссылки
-- data/links/links_oz.txt — ссылки Ozon, по одной в строке.
-- data/links/links_wb.txt — ссылки WB, по одной в строке.
-Строки должны совпадать по порядку: первая строка Ozon = первая строка WB и т.д. Можно ставить # для комментариев.
+## Быстрый запуск (EXE, Windows)
+Вариант 1. Готовый exe
+1) Скачайте `dist/ozon_wb_parser.exe` из релиза/архива.
+2) Запустите двойным кликом или командой:  
+   `.\ozon_wb_parser.exe`
 
-## Как запустить
-Откройте PowerShell в папке проекта:
+Вариант 2. Собрать самим
+1) Откройте CMD/PowerShell в корне проекта.
+2) Выполните:  
+   `powershell -ExecutionPolicy Bypass -File build_exe.ps1`
+3) Запустите:  
+   `.\dist\ozon_wb_parser.exe`
 
-cd C:\Users\FoodLover\Documents\PetProjects\Parser_exe
+Дальше в окне:
+- Вставьте ссылки Ozon и WB (по одной в строке) или выберите txt-файлы.
+- Профиль Chrome подставится сам; `chrome.exe` опционален (по умолчанию берётся скачанный Chromium).
+- При необходимости нажмите «Открыть окно для логина Ozon», авторизуйтесь и закройте окно.
+- Жмите «Старт парсинга» и ждите прогресса. Итог: CSV и XLSX по выбранному пути.
 
-Выполните команду (при необходимости поменяйте пути к профилю и браузеру):
-
+## Запуск из исходников (CLI)
+```
+pip install -r requirements.txt
+python -m playwright install chromium
 python src/paired_price_export.py ^
   --oz-links data/links/links_oz.txt ^
   --wb-links data/links/links_wb.txt ^
   --profile-dir "C:\Users\<ВАШ_ПОЛЬЗОВАТЕЛЬ>\AppData\Local\Google\Chrome\User Data\Default" ^
   --browser-path "C:\Program Files\Google\Chrome\Application\chrome.exe" ^
   --skip-html
+```
 
-Важно:
-- --profile-dir — папка профиля Chrome, где есть вход в Ozon.
-- --browser-path — путь до chrome.exe.
-- --skip-html — не сохранять HTML (можно убрать, если нужны снапшоты).
+## Что вводить
+- Ссылки Ozon и WB должны идти парами по строкам. В окне можно вставить напрямую или выбрать файлы `data/links/links_oz.txt` и `data/links/links_wb.txt`.
+- Если ссылки есть и в полях, и в файлах, приоритет у полей. Пустые строки и строки с `#` игнорируются.
 
-## Результат
-В output/ появятся файлы paired_prices_<дата>.csv и paired_prices_<дата>.xlsx.
-Колонки в отчёте:
-- name — название
-- ozon_url, wb_url — исходные ссылки
-- price_ozon_card — цена с Ozon Картой
-- price_wb — цена WB
-- wb_article — артикул WB
-- parsed_at — время парсинга
+## Сборка EXE
+```
+powershell -ExecutionPolicy Bypass -File build_exe.ps1
+```
+Скрипт создаёт venv, ставит зависимости, качает Chromium для Playwright и собирает `dist/ozon_wb_parser.exe`. Браузер встраивается, если найден; иначе скачается при первом запуске EXE.
 
-## Если не логинится Ozon
-1) Выполните: python -m playwright open --browser=chromium --user-data-dir output/playwright_profile https://www.ozon.ru/
-2) Залогиньтесь вручную, закройте окно.
-3) Запустите основную команду, указав --profile-dir output/playwright_profile.
-
-## Минимальный набор файлов
-- src/paired_price_export.py, src/ozon_playwright_fetch.py, src/github_pipeline.py, src/marketplace_parser.py
-- data/links/links_oz.txt, data/links/links_wb.txt
-- data/cookies/*.example.json (шаблоны, если захотите использовать cookies)
-- output/ — сюда пишется результат.
+## Связаться
+Вопросы и доработки: [t.me/BigFriendlyCat](https://t.me/BigFriendlyCat).

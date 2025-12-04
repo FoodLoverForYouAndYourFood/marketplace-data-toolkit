@@ -1,0 +1,33 @@
+# Virtual envs and tooling
+.venv/
+.env
+.env.local
+.python-version
+*.spec
+
+# Build artifacts
+/build/
+/dist/
+/output/
+
+# Caches
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# Playwright / browsers (if unpacked locally)
+.local-browsers/
+ms-playwright/
+
+# Generated data
+data/html/
+data/links/*.csv
+data/links/*.xlsx
+data/cookies/*.json
+!data/cookies/*.example.json
+
+# OS junk
+.DS_Store
+Thumbs.db
